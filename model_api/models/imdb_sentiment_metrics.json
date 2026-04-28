@@ -1,0 +1,12 @@
+{
+  "model_name": "tfidf_logistic_regression",
+  "accuracy": 0.903,
+  "macro_avg_f1": 0.902989,
+  "weighted_avg_f1": 0.902989,
+  "labels": [
+    "negative",
+    "positive"
+  ],
+  "test_size": 0.2,
+  "random_state": 42
+}
