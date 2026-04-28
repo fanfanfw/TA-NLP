@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  user
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ReviewStatus {
+  visible
+  hidden_by_admin
+  deleted_by_admin
+  deleted_by_user
+}
+
+model User {
+  id               String         @id @default(cuid())
+  username         String         @unique
+  email            String         @unique
+  passwordHash     String
+  role             UserRole       @default(user)
+  approvalStatus   ApprovalStatus @default(pending)
+  isActive         Boolean        @default(true)
+  approvedAt       DateTime?
+  approvedById     String?
+  approvedBy       User?          @relation("UserApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedUsers    User[]         @relation("UserApprover")
+  sessions         Session[]
+  reviews          Review[]       @relation("ReviewAuthor")
+  reviewHistory    ReviewHistory[]
+  moderatedReviews Review[]       @relation("ReviewModerator")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([approvalStatus])
+  @@index([isActive])
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Review {
+  id                     String       @id @default(cuid())
+  userId                 String
+  user                   User         @relation("ReviewAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  tmdbMediaType          String
+  tmdbMediaId            String
+  tmdbTitleSnapshot      String
+  tmdbPosterPathSnapshot String?
+  content                String
+  sentimentLabel         String
+  sentimentConfidence    Float
+  sentimentScoresJson    Json
+  modelVersion           String?
+  status                 ReviewStatus @default(visible)
+  moderationMessage      String?
+  moderatedAt            DateTime?
+  moderatedById          String?
+  moderatedBy            User?        @relation("ReviewModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  history                ReviewHistory[]
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  @@unique([userId, tmdbMediaType, tmdbMediaId])
+  @@index([tmdbMediaType, tmdbMediaId, status])
+  @@index([sentimentLabel])
+  @@index([status])
+  @@index([moderatedById])
+}
+
+model ReviewHistory {
+  id                  String       @id @default(cuid())
+  reviewId            String
+  review              Review       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action              String
+  content             String
+  sentimentLabel      String
+  sentimentConfidence Float
+  status              ReviewStatus
+  createdAt           DateTime     @default(now())
+
+  @@index([reviewId, createdAt])
+  @@index([userId, createdAt])
+}
